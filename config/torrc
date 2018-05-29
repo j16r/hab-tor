@@ -1,0 +1,14 @@
+# Relay only, no local connections
+SocksPort 0 # what port to open for local application connections
+
+Address tor.j16r.net
+ORPort 9001
+Nickname hagal
+
+RelayBandwidthRate 500 KBytes  # Throttle traffic to 500KB/s
+RelayBandwidthBurst 800 KBytes # But allow bursts up to 800KB/s
+
+ContactInfo John Barker <torbridge@j16r.net>
+
+# Bridge only, DO will shut down exit nodes
+Exitpolicy reject *:*

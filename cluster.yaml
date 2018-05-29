@@ -1,0 +1,167 @@
+#
+# Habitat operator
+#
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: habitat-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: habitat-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: habitat-operator
+subjects:
+- kind: ServiceAccount
+  name: habitat-operator
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: habitat-operator
+rules:
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups:
+  - habitat.sh
+  resources:
+  - habitats
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources:
+  - secrets
+  verbs: ["get"]
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs: ["list"]
+- apiGroups: [""]
+  resources:
+  - events
+  verbs: [ "create" ]
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: habitat-operator
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: habitat-operator
+    spec:
+      containers:
+      - name: habitat-operator
+        image: habitat/habitat-operator:v0.6.1
+      serviceAccountName: habitat-operator
+---
+#
+# Habitat updater
+#
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: habitat-updater
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: habitat-updater
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: habitat-updater
+subjects:
+- kind: ServiceAccount
+  name: habitat-updater
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: habitat-updater
+rules:
+- apiGroups:
+  - habitat.sh
+  resources:
+  - habitats
+  verbs: ["get","update", "patch"]
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs: ["list"]
+---
+apiVersion: habitat.sh/v1beta1
+kind: Habitat
+metadata:
+  name: updater
+customVersion: v1beta2
+spec:
+  v1beta2:
+    image: habitat/habitat-updater
+    count: 1
+    service:
+      name: habitat-updater
+      topology: standalone
+---
+#
+# Tor Habitat
+#
+apiVersion: v1
+kind: Service
+metadata:
+  name: tor
+spec:
+  selector:
+    habitat-name: tor
+  ports:
+    - name: tor
+      protocol: TCP
+      port: 9001
+  type: LoadBalancer
+---
+apiVersion: habitat.sh/v1beta1
+kind: Habitat
+metadata:
+  name: tor
+customVersion: v1beta2
+spec:
+  v1beta2:
+    image: j16r/hab-tor
+    count: 1
+    service:
+      topology: standalone
+    ports:
+      - containerPort: 9001
